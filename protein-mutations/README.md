@@ -1,0 +1,4 @@
+
+```
+ipython notebook --pylab inline
+```
