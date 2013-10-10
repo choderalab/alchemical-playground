@@ -179,8 +179,8 @@ class AbsoluteAlchemicalFactory(object):
 
         alchemical_states = list()
 
-        alchemical_states.append(AlchemicalState(0.00, 1.00, 1.00, 1.)) # 0
-        alchemical_states.append(AlchemicalState(0.00, 1.00, 1.00, 1.)) # 1
+        #alchemical_states.append(AlchemicalState(0.00, 1.00, 1.00, 1.)) # 0
+        #alchemical_states.append(AlchemicalState(0.00, 1.00, 1.00, 1.)) # 1
         alchemical_states.append(AlchemicalState(0.00, 1.00, 1.00, 1.)) # 2 fully interacting
         alchemical_states.append(AlchemicalState(0.00, 0.975, 1.00, 1.)) # 3
         alchemical_states.append(AlchemicalState(0.00, 0.95, 1.00, 1.)) # 4
@@ -217,8 +217,8 @@ class AbsoluteAlchemicalFactory(object):
         alchemical_states.append(AlchemicalState(0.00, 0.00, 0.05, 1.)) # 31
         alchemical_states.append(AlchemicalState(0.00, 0.00, 0.025, 1.)) # 32
         alchemical_states.append(AlchemicalState(0.00, 0.00, 0.00, 1.)) # 33 discharged, LJ annihilated
-        alchemical_states.append(AlchemicalState(0.00, 0.00, 0.00, 1.)) # 34
-        alchemical_states.append(AlchemicalState(0.00, 0.00, 0.00, 1.)) # 35 
+        #alchemical_states.append(AlchemicalState(0.00, 0.00, 0.00, 1.)) # 34
+        #alchemical_states.append(AlchemicalState(0.00, 0.00, 0.00, 1.)) # 35 
         
         return alchemical_states
 

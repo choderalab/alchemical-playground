@@ -103,16 +103,6 @@ def create_nacl_system():
     modeller = app.Modeller(pdbfile.topology, pdbfile.positions)
     modeller.addSolvent(forcefield, model='tip3p', padding=10.0*units.angstroms)
 
-    # Delete any added ions.
-    delete_list = list()
-    for chain in modeller.topology.chains():
-        for residue in chain.residues():
-            if residue.name == "CL":
-                delete_list.append(residue)
-    print delete_list
-    print "Deleting %d residues..." % len(delete_list)
-    modeller.delete(delete_list)
-
     # Create System.
     cutoff = 9.0 * units.angstroms
     #nonbondedMethod = app.CutoffPeriodic
@@ -157,8 +147,8 @@ if __name__ == "__main__":
 
     print "Creating solvated NaCl system..."
 
-    [system, positions, topology] = create_nacl_system()
-    print "system has %d atoms" % system.getNumParticles()
+    [reference_system, positions, topology] = create_nacl_system()
+    print "system has %d atoms" % reference_system.getNumParticles()
     
     # DEBUG
     outfile = open('nacl-solvated.pdb', 'w')
@@ -173,11 +163,12 @@ if __name__ == "__main__":
 
     # Create a factory to produce alchemical intermediates.
     ligand_atoms = range(0,2) # NaCl
+    from alchemy import AbsoluteAlchemicalFactory
     factory = AbsoluteAlchemicalFactory(reference_system, ligand_atoms=ligand_atoms)
     # Get the default protocol for 'denihilating' in complex in explicit solvent.
     protocol = factory.defaultComplexProtocolImplicit()
     # Create the perturbed systems using this protocol.
-    systems = factory.createPerturbedSystems(protocol)
+    systems = factory.createPerturbedSystems(protocol, verbose=True)
 
     #
     # Set up replica exchange simulation.
@@ -189,14 +180,18 @@ if __name__ == "__main__":
     from thermodynamics import ThermodynamicState
     reference_state = ThermodynamicState(reference_system, temperature=temperature, pressure=pressure)
     # Create simulation.
-    simulation = HamiltonianExchange(reference_state, systems, coordinates, store_filename)
+    from repex import HamiltonianExchange
+    simulation = HamiltonianExchange(reference_state, systems, positions, store_filename)
     simulation.number_of_iterations = niterations # set the simulation to only run 2 iterations
     simulation.timestep = timestep # set the timestep for integration
     simulation.nsteps_per_iteration = nsteps # run 50 timesteps per iteration
     simulation.minimize = False
+    simulation.verbose = True
     simulation.platform = platform # set platform
 
     # Run simulation.
+
+    print "Running simulation..."
     simulation.run() # run the simulation
 
     
