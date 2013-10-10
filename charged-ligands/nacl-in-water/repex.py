@@ -198,7 +198,7 @@ class ReplicaExchange(object):
     (This is just an illustrative example; use ParallelTempering class for actual production parallel tempering simulations.)
     
     >>> # Create test system.
-    >>> import simtk.pyopenmm.extras.testsystems as testsystems
+    >>> import testsystems
     >>> [system, coordinates] = testsystems.AlanineDipeptideImplicit()
     >>> # Create thermodynamic states for parallel tempering with exponentially-spaced schedule.
     >>> import simtk.unit as units
@@ -461,9 +461,12 @@ class ReplicaExchange(object):
 
         # TODO: If no platform is specified, get the default platform.
         if self.platform is None:
-            print "No platform is specified, using default."
-            print "Not implemented."
-            return Error
+            print "No platform is specified."
+            platforms = [ self.mm.Platform.getPlatform(index) for index in range(self.mm.Platform.getNumPlatforms()) ]
+            speeds = [ platform.getSpeed() for platform in platforms ]
+            platform_index = numpy.argmax(speeds)
+            self.platform = platforms[platform_index]
+            print "Using fastest platform '%s'." % self.platform.getName()
 
         # Turn off verbosity if not master node.
         if self.mpicomm:
@@ -1873,7 +1876,7 @@ class ParallelTempering(ReplicaExchange):
     Parallel tempering of alanine dipeptide in implicit solvent.
     
     >>> # Create alanine dipeptide test system.
-    >>> import simtk.pyopenmm.extras.testsystems as testsystems
+    >>> import testsystems
     >>> [system, coordinates] = testsystems.AlanineDipeptideImplicit()
     >>> # Create temporary file for storing output.
     >>> import tempfile
@@ -1894,7 +1897,7 @@ class ParallelTempering(ReplicaExchange):
     Parallel tempering of alanine dipeptide in explicit solvent at 1 atm.
     
     >>> # Create alanine dipeptide system
-    >>> import simtk.pyopenmm.extras.testsystems as testsystems
+    >>> import testsystems
     >>> [system, coordinates] = testsystems.AlanineDipeptideExplicit()
     >>> # Add Monte Carlo barsostat to system (must be same pressure as simulation).
     >>> import simtk.openmm as openmm
@@ -2062,7 +2065,7 @@ class HamiltonianExchange(ReplicaExchange):
     EXAMPLES
     
     >>> # Create reference system
-    >>> import simtk.pyopenmm.extras.testsystems as testsystems
+    >>> import testsystems
     >>> [reference_system, coordinates] = testsystems.AlanineDipeptideImplicit()
     >>> # Copy reference system.
     >>> systems = [reference_system for index in range(10)]
@@ -2108,9 +2111,9 @@ class HamiltonianExchange(ReplicaExchange):
             # Create thermodynamic states.
             import copy
             states = list()
-            for system_index in range(ntemps):
-                system_copy = copy.deepcopy(systems[system_index])
-                if pressure is not None: self._addMonteCarloBarostat(system_copy, pressure, temperature)
+            for system in systems:
+                system_copy = copy.deepcopy(system)
+                if reference_state.pressure is not None: self._addMonteCarloBarostat(system_copy, reference_state.pressure, reference_state.temperature)
                 state = ThermodynamicState(system=system_copy, temperature=reference_state.temperature, pressure=reference_state.temperature, mm=mm)
                 states.append(state)
 

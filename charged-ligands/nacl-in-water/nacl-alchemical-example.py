@@ -147,7 +147,7 @@ if __name__ == "__main__":
     #options = {"CudaPrecision": "double"} 
     #options = {"CudaPrecision": "mixed"} 
     #tol = 1.0e-8 # constraint tolerance
-    platform_name = "CUDA"
+    platform_name = "OpenCL"
 
     platform = openmm.Platform.getPlatformByName(platform_name)
 
