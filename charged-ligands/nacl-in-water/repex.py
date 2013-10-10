@@ -459,20 +459,19 @@ class ReplicaExchange(object):
             print "Simulation has already been initialized."
             raise Error
 
-        # TODO: If no platform is specified, get the default platform.
+        # If no platform is specified, get the default platform.
         if self.platform is None:
-            print "No platform is specified."
+            if self.verbose: print "No platform is specified."
             platforms = [ self.mm.Platform.getPlatform(index) for index in range(self.mm.Platform.getNumPlatforms()) ]
             speeds = [ platform.getSpeed() for platform in platforms ]
             platform_index = numpy.argmax(speeds)
             self.platform = platforms[platform_index]
-            print "Using fastest platform '%s'." % self.platform.getName()
+            if self.verbose: print "Using fastest platform '%s'." % self.platform.getName()
 
         # Turn off verbosity if not master node.
         if self.mpicomm:
             # Have each node report that it is initialized.
-            if self.verbose:
-                print "Initialized node %d / %d" % (self.mpicomm.rank, self.mpicomm.size)
+            if self.verbose: print "Initialized node %d / %d" % (self.mpicomm.rank, self.mpicomm.size)
             # Turn off verbosity for all nodes but root.
             if self.mpicomm.rank != 0:
                 self.verbose = False
@@ -494,7 +493,7 @@ class ReplicaExchange(object):
             initial_time = time.time()
             if self.mpicomm.rank == 0:
                 for state_index in range(self.nstates):
-                    print "Master node compiling kernels for state %d / %d..." % (state_index, self.nstates) # DEBUG
+                    if self.verbose: print "Master node compiling kernels for state %d / %d..." % (state_index, self.nstates) # DEBUG
                     state = self.states[state_index]
                     integrator = self.mm.LangevinIntegrator(state.temperature, self.collision_rate, self.timestep)                    
                     integrator.setRandomNumberSeed(seed + self.mpicomm.rank) 
@@ -504,7 +503,7 @@ class ReplicaExchange(object):
             self.mpicomm.barrier()
             final_time = time.time()
             elapsed_time = final_time - initial_time
-            print "Barrier complete.  Compiling kernels took %.1f s." % elapsed_time # DEBUG
+            if self.verbose: print "Barrier complete.  Compiling kernels took %.1f s." % elapsed_time # DEBUG
 
             # Create cached contexts for only the states this process will handle.
             initial_time = time.time()
@@ -539,7 +538,7 @@ class ReplicaExchange(object):
                     state._context = self.mm.Context(state.system, state._integrator, self.platform)
                 else:
                     state._context = self.mm.Context(state.system, state._integrator)
-                print "Context creation took %.3f s" % (time.time() - initial_context_time) # DEBUG            
+                if self.verbose: print "Context creation took %.3f s" % (time.time() - initial_context_time) # DEBUG            
         final_time = time.time()
         elapsed_time = final_time - initial_time
         if self.verbose: print "%.3f s elapsed." % elapsed_time
@@ -676,7 +675,7 @@ class ReplicaExchange(object):
 
         return
 
-    def _addMonteCarloBarostat(self, system, pressure=None, temperature=None, frequency=None):
+    def _addMonteCarloBarostat(self, system, pressure=None, temperature=None, frequency=None, mm=None):
         """
         Add a MonteCarloBarostat if one does not exist, or set pressure to given value if it does exist.
 
@@ -687,6 +686,9 @@ class ReplicaExchange(object):
         frequency (int) - frequency of MC barostat update attempts
 
         """
+
+        if mm is None:
+            mm = simtk.openmm
         
         forces = [ system.getForce(index) for index in range(system.getNumForces()) ]
         forces_dict = { force.__class__.__name__ : force for force in forces }
@@ -697,7 +699,10 @@ class ReplicaExchange(object):
             if temperature: force.setTemperature(temperature)
             if frequency: force.setFrequence(frequency)
         else:
-            force = openmm.MonteCarloBarostat(pressure, temperature, frequency)
+            if frequency:
+                force = mm.MonteCarloBarostat(pressure, temperature, frequency)
+            else:
+                force = mm.MonteCarloBarostat(pressure, temperature)
             system.addForce(force)
 
         return
@@ -1087,7 +1092,7 @@ class ReplicaExchange(object):
         Nij_accepted = self.Nij_accepted
 
         # Execute inline C code with weave.
-        info = weave.inline(code, ['nstates', 'replica_states', 'u_kl', 'Nij_proposed', 'Nij_accepted'], headers=['<math.h>', '<stdlib.h>'], verbose=2)
+        info = weave.inline(code, ['nstates', 'replica_states', 'u_kl', 'Nij_proposed', 'Nij_accepted'], headers=['<math.h>', '<stdlib.h>'], verbose=0)
 
         # Store results.
         self.replica_states = replica_states
@@ -1955,10 +1960,10 @@ class ParallelTempering(ReplicaExchange):
         # Create thermodynamic states.
         import copy
         states = list()
-        for temperature_index in range(ntemps):
+        for temperature in self.temperatures:
             system_copy = copy.deepcopy(system)
-            if pressure is not None: self._addMonteCarloBarostat(system_copy, pressure, temperature)
-            state = ThermodynamicState(system=system_copy, temperature=self.temperatures[temperature_index], pressure=pressure, mm=mm)
+            if pressure is not None: self._addMonteCarloBarostat(system_copy, pressure=pressure, temperature=temperature, mm=mm)
+            state = ThermodynamicState(system=system_copy, temperature=temperature, pressure=pressure, mm=mm)
             states.append(state)
         
         # Initialize replica-exchange simlulation.
@@ -2113,8 +2118,8 @@ class HamiltonianExchange(ReplicaExchange):
             states = list()
             for system in systems:
                 system_copy = copy.deepcopy(system)
-                if reference_state.pressure is not None: self._addMonteCarloBarostat(system_copy, reference_state.pressure, reference_state.temperature)
-                state = ThermodynamicState(system=system_copy, temperature=reference_state.temperature, pressure=reference_state.temperature, mm=mm)
+                if reference_state.pressure is not None: self._addMonteCarloBarostat(system_copy, pressure=reference_state.pressure, temperature=reference_state.temperature, mm=mm)
+                state = ThermodynamicState(system=system_copy, temperature=reference_state.temperature, pressure=reference_state.pressure, mm=mm)
                 states.append(state)
 
         # Initialize replica-exchange simlulation.

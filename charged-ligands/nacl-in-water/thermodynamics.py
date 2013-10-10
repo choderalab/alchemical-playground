@@ -291,6 +291,7 @@ class ThermodynamicState(object):
         # Compute reduced potential.
         reduced_potential = beta * potential_energy
         if self.pressure is not None:
+            #raise Exception(str(beta) + " pressure: " + str(self.pressure) + " volume: " + str(self._volume(box_vectors)) + " " + str(kB) + " : " + str(beta * self.pressure * self._volume(box_vectors)))
             reduced_potential += beta * self.pressure * self._volume(box_vectors) * units.AVOGADRO_CONSTANT_NA
 
         # Clean up context if requested, or if we're using Cuda (which can only have one active Context at a time).
